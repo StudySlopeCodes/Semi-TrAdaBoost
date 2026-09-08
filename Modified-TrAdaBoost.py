@@ -7,11 +7,9 @@ from sklearn.svm import SVC
 from sklearn.metrics import roc_auc_score, cohen_kappa_score, f1_score
 from sklearn.preprocessing import StandardScaler
 
-# 设置中文显示
 plt.rcParams['font.sans-serif'] = ['SimHei']
 plt.rcParams['axes.unicode_minus'] = False
 
-# --- 1. 定义兼容 BPNN 的经典 TrAdaBoost 类 ---
 class ClassicTrAdaBoost:
     def __init__(self, base_learner_type='bpnn', n_estimators=30, learning_rate=0.1):
         self.base_learner_type = base_learner_type
@@ -26,7 +24,6 @@ class ClassicTrAdaBoost:
         X_train = np.concatenate((X_source, X_target), axis=0)
         y_train = np.concatenate((y_source, y_target), axis=0)
         
-        # 初始权重归一化
         weights = np.ones(ns + nt)
         weights[:ns] = (1.0 / ns) * 0.5
         weights[ns:] = (1.0 / nt) * 0.5
@@ -36,7 +33,6 @@ class ClassicTrAdaBoost:
         for t in range(self.n_estimators):
            
             current_weights = weights / (np.sum(weights) + 1e-12)
-            
             
             if self.base_learner_type == 'bpnn':
            
@@ -53,22 +49,22 @@ class ClassicTrAdaBoost:
             self.history_error.append(target_err)
             
             if target_err >= 0.5:
-                print(f"[{self.base_learner_type}] 第 {t} 轮误差超过 0.5，停止迭代。")
+                print(f"[{self.base_learner_type}]) 
                 break
             
             target_err = max(target_err, 1e-10)
             beta_t = target_err / (1 - target_err)
             alpha = 0.5 * np.log(1 / beta_t) * self.learning_rate
-            
-            # 更新权重 (Classic TrAdaBoost 逻辑)
+
+            # updating weight
             new_weights = weights.copy()
             for i in range(len(weights)):
-                if i < ns: # 源域：分错则削弱
+                if i < ns: # source domain
                     if y_pred[i] != y_train[i]: 
-                        new_weights[i] = weights[i] * (beta_out ** self.learning_rate)
-                else: # 目标域：分错则加强
+                        new_weights[i] = weights[i] * (beta_out)
+                else: # target domain
                     if y_pred[i] != y_target[i-ns]: 
-                        new_weights[i] = weights[i] * ((1/beta_t) ** self.learning_rate)
+                        new_weights[i] = weights[i] * (1/beta_t)
             
             weights = new_weights
             self.models.append(model)
